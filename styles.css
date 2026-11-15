@@ -10,30 +10,48 @@
   margin: 0;
 }
 
-#calendar-container .calendar-monthly-note {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+#calendar-container .calendar-note-title {
+  display: flex;
+  align-items: baseline;
+  gap: 0.25em;
   flex-shrink: 0;
-  padding: 4px;
-  margin: 0 4px 0 6px;
-  height: 26px;
-  color: var(--text-muted);
+  color: var(--color-text-title);
+  font-size: 1.5em;
+  margin: 0;
+}
+
+#calendar-container.is-mobile .calendar-note-title {
+  font-size: 1.3em;
+}
+
+#calendar-container .calendar-note-title .month {
+  font-weight: 500;
+  text-transform: capitalize;
+}
+
+#calendar-container .calendar-note-title .year {
+  color: var(--interactive-accent);
+}
+
+#calendar-container .calendar-note-title button {
+  display: inline;
+  padding: 2px;
+  margin: -2px;
+  height: auto;
+  font: inherit;
   background: transparent;
   border: none;
+  border-radius: 4px;
   box-shadow: none;
   cursor: pointer;
 }
 
-#calendar-container .calendar-monthly-note.has-note {
-  color: var(--interactive-accent);
-}
-
-#calendar-container .calendar-monthly-note:hover {
+#calendar-container .calendar-note-title button:hover {
   background: var(--background-modifier-hover);
+  text-decoration: underline;
 }
 
-#calendar-container .calendar-monthly-note:focus-visible {
+#calendar-container .calendar-note-title button:focus-visible {
   outline: 2px solid var(--interactive-accent);
   outline-offset: 2px;
 }

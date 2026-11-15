@@ -4,7 +4,7 @@ import { compile, preprocess } from "svelte/compiler";
 import sveltePreprocess from "svelte-preprocess";
 import { tick } from "svelte";
 import { defaultSettings } from "src/settings";
-import { monthlyNotes, settings } from "./stores";
+import { monthlyNotes, yearlyNotes, settings } from "./stores";
 
 jest.mock("obsidian", () => ({
   TFile: class {},
@@ -19,7 +19,7 @@ jest.mock("obsidian-daily-notes-interface", () => ({
   getAllWeeklyNotes: () => ({}),
 }));
 
-test("monthly control mounts beside the title, follows navigation, updates state and cleans up", async () => {
+test("month and year title links follow navigation without resetting the displayed month", async () => {
   window.moment = moment;
   window._bundledLocaleWeekSpec = { dow: 0, doy: 6 };
   window.app = {
@@ -38,11 +38,18 @@ test("monthly control mounts beside the title, follows navigation, updates state
   const target = document.createElement("div");
   document.body.appendChild(target);
   const onClickMonth = jest.fn();
-  const component = new Calendar({ target, props: { sources: [], displayedMonth: moment("2026-12-15"), onClickMonth } });
+  const onClickYear = jest.fn();
+  const component = new Calendar({ target, props: { sources: [], displayedMonth: moment("2026-12-15"), onClickMonth, onClickYear } });
   try {
     const title = target.querySelector(".nav .title");
-    let button = target.querySelector<HTMLButtonElement>(".calendar-monthly-note");
-    expect(title.nextElementSibling).toBe(button);
+    let button = target.querySelector<HTMLButtonElement>(".calendar-month-link");
+    expect((title as HTMLElement).style.display).toBe("none");
+    expect(title.nextElementSibling.classList.contains("calendar-note-title")).toBe(true);
+    expect(target.querySelector(".calendar-monthly-note")).toBeNull();
+    const yearButton = target.querySelector<HTMLButtonElement>(".calendar-year-link");
+    expect(yearButton.title).toBe("Create yearly note: 2026");
+    yearButton.click();
+    expect(onClickYear.mock.calls[0][0].format("YYYY")).toBe("2026");
     expect(button.title).toBe("Create monthly note: 2026-12");
     button.click();
     expect(onClickMonth.mock.calls[0][0].format("YYYY-MM")).toBe("2026-12");
@@ -53,8 +60,15 @@ test("monthly control mounts beside the title, follows navigation, updates state
     // Calendar UI bundles its own Svelte scheduler.
     await Promise.resolve();
     await tick();
-    button = target.querySelector<HTMLButtonElement>(".calendar-monthly-note");
+    button = target.querySelector<HTMLButtonElement>(".calendar-month-link");
     expect(button.title).toBe("Create monthly note: 2027-01");
+    expect(yearButton.title).toBe("Create yearly note: 2027");
+    yearButton.dispatchEvent(new MouseEvent("click", { metaKey: true }));
+    expect(onClickYear.mock.calls[1][0].year()).toBe(2027);
+    expect(onClickYear.mock.calls[1][1]).toBe(true);
+    yearlyNotes.set({ "2027.md": { path: "2027.md" } as never });
+    await tick();
+    expect(yearButton.title).toBe("Open yearly note: 2027");
     monthlyNotes.set({ "2027-01.md": { path: "2027-01.md" } as never });
     await tick();
     expect(button.title).toBe("Open monthly note: 2027-01");
@@ -62,18 +76,22 @@ test("monthly control mounts beside the title, follows navigation, updates state
 
     settings.set({ ...defaultSettings, showMonthlyNote: false });
     await tick();
-    expect(target.querySelector(".calendar-monthly-note")).toBeNull();
+    expect(target.querySelector(".calendar-month-link")).toBeNull();
     settings.set({ ...defaultSettings, showMonthlyNote: true });
     await tick();
-    expect(title.nextElementSibling.classList.contains("calendar-monthly-note")).toBe(true);
+    expect(target.querySelector(".calendar-month-link")).not.toBeNull();
+    settings.set({ ...defaultSettings, showYearlyNote: false });
+    await tick();
+    expect(target.querySelector(".calendar-year-link")).toBeNull();
+    expect(target.querySelector(".calendar-note-title .year").textContent).toBe("2027");
   } finally {
     component.$destroy();
-    expect(target.querySelector(".calendar-monthly-note")).toBeNull();
+    expect(target.querySelector(".calendar-month-link")).toBeNull();
     target.remove();
   }
-  const initial = new Calendar({ target, props: { sources: [], onClickMonth } });
+  const initial = new Calendar({ target, props: { sources: [], onClickMonth, onClickYear } });
   try {
-    expect(target.querySelector<HTMLButtonElement>(".calendar-monthly-note").title)
+    expect(target.querySelector<HTMLButtonElement>(".calendar-month-link").title)
       .toBe(`Create monthly note: ${moment().format("YYYY-MM")}`);
   } finally {
     initial.$destroy();

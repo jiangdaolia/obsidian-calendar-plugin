@@ -15,6 +15,11 @@ import {
   getMonthlyDateFromFile,
   tryToCreateMonthlyNote,
 } from "src/io/monthlyNotes";
+import {
+  getYearlyNote,
+  getYearlyDateFromFile,
+  tryToCreateYearlyNote,
+} from "src/io/yearlyNotes";
 import { tryToCreateDailyNote } from "src/io/dailyNotes";
 import { tryToCreateWeeklyNote } from "src/io/weeklyNotes";
 import type { ISettings } from "src/settings";
@@ -26,6 +31,7 @@ import {
   dailyNotes,
   weeklyNotes,
   monthlyNotes,
+  yearlyNotes,
   settings,
 } from "./ui/stores";
 import {
@@ -42,6 +48,7 @@ export default class CalendarView extends ItemView {
   constructor(leaf: WorkspaceLeaf) {
     super(leaf);
 
+    this.openOrCreateYearlyNote = this.openOrCreateYearlyNote.bind(this);
     this.openOrCreateMonthlyNote = this.openOrCreateMonthlyNote.bind(this);
     this.openOrCreateDailyNote = this.openOrCreateDailyNote.bind(this);
     this.openOrCreateWeeklyNote = this.openOrCreateWeeklyNote.bind(this);
@@ -70,6 +77,7 @@ export default class CalendarView extends ItemView {
     this.registerEvent(this.app.vault.on("modify", this.onFileModified));
     this.registerEvent(this.app.vault.on("rename", () => {
       monthlyNotes.reindex();
+      yearlyNotes.reindex();
       this.calendar?.tick();
     }));
     this.registerEvent(this.app.workspace.on("file-open", this.onFileOpen));
@@ -119,6 +127,7 @@ export default class CalendarView extends ItemView {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       target: (this as any).contentEl,
       props: {
+        onClickYear: this.openOrCreateYearlyNote,
         onClickMonth: this.openOrCreateMonthlyNote,
         onClickDay: this.openOrCreateDailyNote,
         onClickWeek: this.openOrCreateWeeklyNote,
@@ -195,6 +204,7 @@ export default class CalendarView extends ItemView {
 
   private onNoteSettingsUpdate(): void {
     monthlyNotes.reindex();
+    yearlyNotes.reindex();
     dailyNotes.reindex();
     weeklyNotes.reindex();
     this.updateActiveFile();
@@ -202,6 +212,7 @@ export default class CalendarView extends ItemView {
 
   private async onFileDeleted(file: TFile): Promise<void> {
     monthlyNotes.reindex();
+    yearlyNotes.reindex();
     if (getDateFromFile(file, "day")) {
       dailyNotes.reindex();
       this.updateActiveFile();
@@ -221,6 +232,7 @@ export default class CalendarView extends ItemView {
 
   private onFileCreated(file: TFile): void {
     monthlyNotes.reindex();
+    yearlyNotes.reindex();
     if (this.app.workspace.layoutReady && this.calendar) {
       if (getDateFromFile(file, "day")) {
         dailyNotes.reindex();
@@ -258,6 +270,11 @@ export default class CalendarView extends ItemView {
     const { activeLeaf } = this.app.workspace;
 
     if (activeLeaf.view instanceof FileView) {
+      const year = getYearlyDateFromFile(activeLeaf.view.file, this.settings);
+      if (year) {
+        this.calendar.$set({ displayedMonth: year });
+        return;
+      }
       const month = getMonthlyDateFromFile(activeLeaf.view.file, this.settings);
       if (month) {
         this.calendar.$set({ displayedMonth: month });
@@ -287,6 +304,24 @@ export default class CalendarView extends ItemView {
     if (!note) {
       await tryToCreateMonthlyNote(date, inNewSplit, this.settings, () => {
         monthlyNotes.reindex();
+        this.calendar?.tick();
+      });
+      return;
+    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const mode = (vault as any).getConfig("defaultViewMode");
+    const leaf = inNewSplit
+      ? workspace.splitActiveLeaf()
+      : workspace.getUnpinnedLeaf();
+    await leaf.openFile(note, { active: true, mode });
+  }
+
+  async openOrCreateYearlyNote(date: Moment, inNewSplit: boolean): Promise<void> {
+    const { workspace, vault } = this.app;
+    const note = getYearlyNote(date, get(yearlyNotes), this.settings);
+    if (!note) {
+      await tryToCreateYearlyNote(date, inNewSplit, this.settings, () => {
+        yearlyNotes.reindex();
         this.calendar?.tick();
       });
       return;

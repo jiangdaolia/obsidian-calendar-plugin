@@ -17,6 +17,10 @@ export function getDefaultSettings(
       monthlyNoteFormat: "YYYY-MM",
       monthlyNoteFolder: "",
       monthlyNoteTemplate: "",
+      showYearlyNote: true,
+      yearlyNoteFormat: "YYYY",
+      yearlyNoteFolder: "",
+      yearlyNoteTemplate: "",
     },
     overrides
   );

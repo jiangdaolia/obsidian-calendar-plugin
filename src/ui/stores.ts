@@ -4,6 +4,7 @@ import {
   getAllWeeklyNotes,
 } from "obsidian-daily-notes-interface";
 import { get, writable } from "svelte/store";
+import { getYearlyDateFromFile } from "src/io/yearlyNotes";
 import { getMonthlyDateFromFile } from "src/io/monthlyNotes";
 
 import { defaultSettings, ISettings } from "src/settings";
@@ -68,6 +69,19 @@ export const monthlyNotes = {
       if (getMonthlyDateFromFile(file, config)) notes[file.path] = file;
     });
     monthlyNotes.set(notes);
+  },
+};
+
+// Paths avoid confusing yearly notes with similarly named files in other folders.
+export const yearlyNotes = {
+  ...writable<Record<string, TFile>>({}),
+  reindex: (): void => {
+    const notes: Record<string, TFile> = {};
+    const config = get(settings);
+    window.app.vault.getMarkdownFiles().forEach((file) => {
+      if (getYearlyDateFromFile(file, config)) notes[file.path] = file;
+    });
+    yearlyNotes.set(notes);
   },
 };
 

@@ -3,10 +3,10 @@ import { normalizePath, Notice, TFile } from "obsidian";
 import {
   createMonthlyNote as createPeriodicMonthlyNote,
   getMonthlyNoteSettings as getPeriodicMonthlySettings,
-  getTemplateInfo,
 } from "obsidian-daily-notes-interface";
 
 import { appHasPeriodicMonthlyNotes, ISettings } from "src/settings";
+import { createNoteFromTemplate } from "./createNoteFromTemplate";
 import { createConfirmationDialog } from "src/ui/modal";
 
 export function getMonthlyNoteSettings(
@@ -61,42 +61,6 @@ export function getMonthlyDateFromFile(
     : null;
 }
 
-async function createLocalMonthlyNote(
-  date: Moment,
-  settings: ISettings
-): Promise<TFile> {
-  const { vault } = window.app;
-  const { template, format } = getMonthlyNoteSettings(settings);
-  const path = getMonthlyNotePath(date, settings);
-  let contents = "";
-  if (template) {
-    const templateFile = window.app.metadataCache.getFirstLinkpathDest(template, "");
-    if (!templateFile) {
-      throw new Error(`Monthly note template not found: ${template}`);
-    }
-    [contents] = await getTemplateInfo(template);
-  }
-  const now = window.moment();
-  contents = contents
-    .replace(
-      /{{\s*(date|time)\s*:\s*(.*?)}}/gi,
-      (_, _type, tokenFormat: string) => date.clone().set({
-        hour: now.hour(),
-        minute: now.minute(),
-        second: now.second(),
-      }).format(tokenFormat.trim())
-    )
-    .replace(/{{\s*(date|title)\s*}}/gi, () => date.format(format))
-    .replace(/{{\s*time\s*}}/gi, () => now.format("HH:mm"));
-  const parts = path.split("/");
-  parts.pop();
-  for (let i = 1; i <= parts.length; i++) {
-    const folder = parts.slice(0, i).join("/");
-    if (!vault.getAbstractFileByPath(folder)) await vault.createFolder(folder);
-  }
-  return vault.create(path, contents);
-}
-
 // Recheck inside the confirmation callback, including rapid repeated clicks.
 const pendingCreates = new Map<string, Promise<TFile>>();
 
@@ -117,7 +81,7 @@ export async function tryToCreateMonthlyNote(
         if (!pending) {
           pending = appHasPeriodicMonthlyNotes()
             ? createPeriodicMonthlyNote(month)
-            : createLocalMonthlyNote(month, settings);
+            : createNoteFromTemplate(month, path, getMonthlyNoteSettings(settings));
           pendingCreates.set(path, pending);
         }
         try {

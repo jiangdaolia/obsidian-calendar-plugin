@@ -10,11 +10,13 @@
   import { onDestroy } from "svelte";
 
   import type { ISettings } from "src/settings";
+  import { getYearlyNote } from "src/io/yearlyNotes";
   import { getMonthlyNote } from "src/io/monthlyNotes";
   import {
     activeFile,
     dailyNotes,
     monthlyNotes,
+    yearlyNotes,
     settings,
     weeklyNotes,
   } from "./stores";
@@ -29,6 +31,7 @@
   export let onHoverWeek: (date: Moment, targetEl: EventTarget) => boolean;
   export let onClickDay: (date: Moment, isMetaPressed: boolean) => boolean;
   export let onClickWeek: (date: Moment, isMetaPressed: boolean) => boolean;
+  export let onClickYear: (date: Moment, isMetaPressed: boolean) => Promise<void>;
   export let onClickMonth: (date: Moment, isMetaPressed: boolean) => Promise<void>;
   export let onContextMenuDay: (date: Moment, event: MouseEvent) => boolean;
   export let onContextMenuWeek: (date: Moment, event: MouseEvent) => boolean;
@@ -36,13 +39,20 @@
   $: monthlyNote = getMonthlyNote(displayedMonth, $monthlyNotes, $settings);
   $: monthlyLabel = `${monthlyNote ? "Open" : "Create"} monthly note: ${displayedMonth.format("YYYY-MM")}`;
 
-  // Calendar UI 0.3.12 has no navigation slot. Move our managed button next
-  // to its title; Svelte still owns updates and removes it on teardown.
-  function besideMonth(button: HTMLButtonElement) {
-    button.parentElement
-      .querySelector(".nav .title")
-      .insertAdjacentElement("afterend", button);
-    return { destroy: () => button.remove() };
+  $: yearlyNote = getYearlyNote(displayedMonth, $yearlyNotes, $settings);
+  $: yearlyLabel = `${yearlyNote ? "Open" : "Create"} yearly note: ${displayedMonth.format("YYYY")}`;
+
+  // Calendar UI 0.3.12 has no navigation slot. Place our accessible title
+  // beside its hidden original so title clicks no longer reset the month.
+  function mountTitle(heading: HTMLHeadingElement) {
+    const original = heading.parentElement.querySelector<HTMLElement>(".nav .title");
+    const display = original.style.display;
+    original.style.display = "none";
+    original.insertAdjacentElement("afterend", heading);
+    return { destroy: () => {
+      original.style.display = display;
+      heading.remove();
+    } };
   }
 
   export function tick() {
@@ -54,6 +64,7 @@
     dailyNotes.reindex();
     weeklyNotes.reindex();
     monthlyNotes.reindex();
+    yearlyNotes.reindex();
     return window.moment();
   }
 
@@ -89,27 +100,28 @@
     selectedId={$activeFile}
     showWeekNums={$settings.showWeeklyNote}
   />
-  {#if $settings.showMonthlyNote}
-    <button
-      use:besideMonth
-      class="calendar-monthly-note"
-      class:has-note={!!monthlyNote}
-      title={monthlyLabel}
-      aria-label={monthlyLabel}
-      on:click={(event) => onClickMonth(displayedMonth.clone(), event.metaKey || event.ctrlKey)}
-    >
-      <svg
-        width="16"
-        height="16"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="2"
-        aria-hidden="true"
-      >
-        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-        <path d="M14 2v6h6M8 13h8M8 17h6" />
-      </svg>
-    </button>
-  {/if}
+  <h3 use:mountTitle class="calendar-note-title">
+    {#if $settings.showMonthlyNote}
+      <button
+        class="month calendar-month-link"
+        class:has-note={!!monthlyNote}
+        title={monthlyLabel}
+        aria-label={monthlyLabel}
+        on:click={(event) => onClickMonth(displayedMonth.clone(), event.metaKey || event.ctrlKey)}
+      >{displayedMonth.format("MMM")}</button>
+    {:else}
+      <span class="month">{displayedMonth.format("MMM")}</span>
+    {/if}
+    {#if $settings.showYearlyNote}
+      <button
+        class="year calendar-year-link"
+        class:has-note={!!yearlyNote}
+        title={yearlyLabel}
+        aria-label={yearlyLabel}
+        on:click={(event) => onClickYear(displayedMonth.clone(), event.metaKey || event.ctrlKey)}
+      >{displayedMonth.format("YYYY")}</button>
+    {:else}
+      <span class="year">{displayedMonth.format("YYYY")}</span>
+    {/if}
+  </h3>
 </div>

@@ -16,14 +16,15 @@ The plugin reads your Daily Note settings to know your date format, your daily n
 - Create new daily notes for days that don't have one. (This is helpful for when you need to backfill old notes or if you're planning ahead for future notes! This will use your current **daily note** template!)
 - Visualize your writing. Each day includes a meter to approximate how much you've written that day.
 - Use **Weekly notes** for an added organization layer! They work just like daily notes, but have their own customization options.
-- Open or create a **monthly note** using the document button beside the month title. The button always uses the displayed month; hold `Ctrl/Command` while clicking to open in a new split. Existing monthly notes use an accent-colored button.
+- Click the **month** in the calendar title to open or create the displayed month's monthly note, or click the **year** to open or create its yearly note. Hold `Ctrl/Command` while clicking either title to open in a new split. Use the Today control on the right to return to the current month.
 
 ## Settings
 
 - **Start week on [default: locale]**: Configure the Calendar view to show Sunday or Monday as the first day of the week. Choosing 'locale' will set the start day to be whatever is the default for your chosen locale (`Settings > About > Language`)
 - **Words per Dot [default: 250]**: Starting in version 1.3, dots reflect the word count of your files. By default, each dot represents 250 words, you can change that value to whatever you want. Set this to `0` to disable the word count entirely. **Note:** There is a max of 5 dots so that the view doesn't get too big!
 - **Confirm before creating new note [default: on]**: If you don't like that a modal prompts you before creating a new daily note, you can turn it off.
-- **Show monthly note button [default: on]**: Show the monthly note button beside the month title. Configure its filename format (default `YYYY-MM`), folder (default vault root), and template under Monthly Note Settings. If monthly notes are enabled in Periodic Notes, its configuration is used instead. Monthly notes share the confirmation setting above. Template dates use the first day of the displayed month.
+- **Enable monthly notes [default: on]**: Make the month in the calendar title clickable. Configure its filename format (default `YYYY-MM`), folder (default vault root), and template under Monthly Note Settings. If monthly notes are enabled in Periodic Notes, its configuration is used instead. Monthly notes share the confirmation setting above. Template dates use the first day of the displayed month.
+- **Enable yearly notes [default: on]**: Make the year in the calendar title clickable. Configure its filename format (default `YYYY`), folder (default vault root), and template under Yearly Note Settings. Yearly notes share the confirmation setting above. Template dates use January 1 of the displayed year.
 - **Show Week Number [default: off]**: Enable this to add a new column to the calendar view showing the [Week Number](https://en.wikipedia.org/wiki/Week#Week_numbering). Clicking on these cells will open your **weekly note**.
 
 ## Customization

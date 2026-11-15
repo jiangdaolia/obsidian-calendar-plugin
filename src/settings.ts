@@ -23,6 +23,12 @@ export interface ISettings {
   monthlyNoteTemplate: string;
   monthlyNoteFolder: string;
 
+  // Yearly Note settings
+  showYearlyNote: boolean;
+  yearlyNoteFormat: string;
+  yearlyNoteTemplate: string;
+  yearlyNoteFolder: string;
+
   localeOverride: ILocaleOverride;
 }
 
@@ -51,6 +57,11 @@ export const defaultSettings = Object.freeze({
   monthlyNoteFormat: "YYYY-MM",
   monthlyNoteTemplate: "",
   monthlyNoteFolder: "",
+
+  showYearlyNote: true,
+  yearlyNoteFormat: "YYYY",
+  yearlyNoteTemplate: "",
+  yearlyNoteFolder: "",
 
   localeOverride: "system-default",
 });
@@ -117,6 +128,7 @@ export class CalendarSettingsTab extends PluginSettingTab {
     }
 
     this.addMonthlyNoteSettings();
+    this.addYearlyNoteSettings();
 
     this.containerEl.createEl("h3", {
       text: "Advanced Settings",
@@ -143,8 +155,8 @@ export class CalendarSettingsTab extends PluginSettingTab {
   addMonthlyNoteSettings(): void {
     this.containerEl.createEl("h3", { text: "Monthly Note Settings" });
     new Setting(this.containerEl)
-      .setName("Show monthly note button")
-      .setDesc("Add a button beside the month to open or create its monthly note")
+      .setName("Enable monthly notes")
+      .setDesc("Click the month in the calendar title to open or create its monthly note")
       .addToggle((toggle) => {
         toggle.setValue(this.plugin.options.showMonthlyNote);
         toggle.onChange(async (value) => {
@@ -180,6 +192,54 @@ export class CalendarSettingsTab extends PluginSettingTab {
         name: "Monthly note template",
         description: "Path to the template for new monthly notes",
         placeholder: "Templates/Monthly",
+      },
+    ] as const;
+    fields.forEach(({ key, name, description, placeholder }) => {
+      new Setting(this.containerEl)
+        .setName(name)
+        .setDesc(description)
+        .addText((textfield) => {
+          textfield.setValue(this.plugin.options[key]);
+          textfield.setPlaceholder(placeholder);
+          textfield.onChange(async (value) => {
+            await this.plugin.writeOptions(() => ({ [key]: value }));
+          });
+        });
+    });
+  }
+
+  addYearlyNoteSettings(): void {
+    this.containerEl.createEl("h3", { text: "Yearly Note Settings" });
+    new Setting(this.containerEl)
+      .setName("Enable yearly notes")
+      .setDesc("Click the year in the calendar title to open or create its yearly note")
+      .addToggle((toggle) => {
+        toggle.setValue(this.plugin.options.showYearlyNote);
+        toggle.onChange(async (value) => {
+          await this.plugin.writeOptions(() => ({ showYearlyNote: value }));
+          this.display();
+        });
+      });
+
+    if (!this.plugin.options.showYearlyNote) return;
+    const fields = [
+      {
+        key: "yearlyNoteFormat",
+        name: "Yearly note format",
+        description: "Moment date format for yearly note names",
+        placeholder: "YYYY",
+      },
+      {
+        key: "yearlyNoteFolder",
+        name: "Yearly note folder",
+        description: "New yearly notes will be placed here",
+        placeholder: "Vault root",
+      },
+      {
+        key: "yearlyNoteTemplate",
+        name: "Yearly note template",
+        description: "Path to the template for new yearly notes",
+        placeholder: "Templates/Yearly",
       },
     ] as const;
     fields.forEach(({ key, name, description, placeholder }) => {
