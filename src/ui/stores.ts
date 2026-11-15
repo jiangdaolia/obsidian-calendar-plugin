@@ -3,7 +3,8 @@ import {
   getAllDailyNotes,
   getAllWeeklyNotes,
 } from "obsidian-daily-notes-interface";
-import { writable } from "svelte/store";
+import { get, writable } from "svelte/store";
+import { getMonthlyDateFromFile } from "src/io/monthlyNotes";
 
 import { defaultSettings, ISettings } from "src/settings";
 
@@ -56,6 +57,19 @@ function createWeeklyNotesStore() {
 export const settings = writable<ISettings>(defaultSettings);
 export const dailyNotes = createDailyNotesStore();
 export const weeklyNotes = createWeeklyNotesStore();
+
+// Paths avoid confusing monthly notes with similarly named files in other folders.
+export const monthlyNotes = {
+  ...writable<Record<string, TFile>>({}),
+  reindex: (): void => {
+    const notes: Record<string, TFile> = {};
+    const config = get(settings);
+    window.app.vault.getMarkdownFiles().forEach((file) => {
+      if (getMonthlyDateFromFile(file, config)) notes[file.path] = file;
+    });
+    monthlyNotes.set(notes);
+  },
+};
 
 function createSelectedFileStore() {
   const store = writable<string>(null);

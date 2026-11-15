@@ -13,6 +13,10 @@ export function getDefaultSettings(
       weeklyNoteFolder: "",
       weeklyNoteFormat: "",
       weeklyNoteTemplate: "",
+      showMonthlyNote: true,
+      monthlyNoteFormat: "YYYY-MM",
+      monthlyNoteFolder: "",
+      monthlyNoteTemplate: "",
     },
     overrides
   );

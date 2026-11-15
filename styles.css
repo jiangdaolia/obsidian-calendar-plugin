@@ -9,3 +9,31 @@
 .settings-banner h4 {
   margin: 0;
 }
+
+#calendar-container .calendar-monthly-note {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  padding: 4px;
+  margin: 0 4px 0 6px;
+  height: 26px;
+  color: var(--text-muted);
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  cursor: pointer;
+}
+
+#calendar-container .calendar-monthly-note.has-note {
+  color: var(--interactive-accent);
+}
+
+#calendar-container .calendar-monthly-note:hover {
+  background: var(--background-modifier-hover);
+}
+
+#calendar-container .calendar-monthly-note:focus-visible {
+  outline: 2px solid var(--interactive-accent);
+  outline-offset: 2px;
+}

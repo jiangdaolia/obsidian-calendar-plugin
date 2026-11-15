@@ -17,6 +17,12 @@ export interface ISettings {
   weeklyNoteTemplate: string;
   weeklyNoteFolder: string;
 
+  // Monthly Note settings
+  showMonthlyNote: boolean;
+  monthlyNoteFormat: string;
+  monthlyNoteTemplate: string;
+  monthlyNoteFolder: string;
+
   localeOverride: ILocaleOverride;
 }
 
@@ -41,6 +47,11 @@ export const defaultSettings = Object.freeze({
   weeklyNoteTemplate: "",
   weeklyNoteFolder: "",
 
+  showMonthlyNote: true,
+  monthlyNoteFormat: "YYYY-MM",
+  monthlyNoteTemplate: "",
+  monthlyNoteFolder: "",
+
   localeOverride: "system-default",
 });
 
@@ -48,6 +59,12 @@ export function appHasPeriodicNotesPluginLoaded(): boolean {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const periodicNotes = (<any>window.app).plugins.getPlugin("periodic-notes");
   return periodicNotes && periodicNotes.settings?.weekly?.enabled;
+}
+
+export function appHasPeriodicMonthlyNotes(): boolean {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const plugin = (window.app as any).plugins.getPlugin("periodic-notes");
+  return !!plugin?.settings?.monthly?.enabled;
 }
 
 export class CalendarSettingsTab extends PluginSettingTab {
@@ -99,6 +116,8 @@ export class CalendarSettingsTab extends PluginSettingTab {
       this.addWeeklyNoteFolderSetting();
     }
 
+    this.addMonthlyNoteSettings();
+
     this.containerEl.createEl("h3", {
       text: "Advanced Settings",
     });
@@ -119,6 +138,62 @@ export class CalendarSettingsTab extends PluginSettingTab {
           }));
         });
       });
+  }
+
+  addMonthlyNoteSettings(): void {
+    this.containerEl.createEl("h3", { text: "Monthly Note Settings" });
+    new Setting(this.containerEl)
+      .setName("Show monthly note button")
+      .setDesc("Add a button beside the month to open or create its monthly note")
+      .addToggle((toggle) => {
+        toggle.setValue(this.plugin.options.showMonthlyNote);
+        toggle.onChange(async (value) => {
+          await this.plugin.writeOptions(() => ({ showMonthlyNote: value }));
+          this.display();
+        });
+      });
+
+    if (!this.plugin.options.showMonthlyNote) return;
+    if (appHasPeriodicMonthlyNotes()) {
+      this.containerEl.createEl("p", {
+        cls: "setting-item-description",
+        text: "Monthly note format, folder and template are managed by Periodic Notes. New notes use the shared confirmation setting above.",
+      });
+      return;
+    }
+
+    const fields = [
+      {
+        key: "monthlyNoteFormat",
+        name: "Monthly note format",
+        description: "Moment date format for monthly note names",
+        placeholder: "YYYY-MM",
+      },
+      {
+        key: "monthlyNoteFolder",
+        name: "Monthly note folder",
+        description: "New monthly notes will be placed here",
+        placeholder: "Vault root",
+      },
+      {
+        key: "monthlyNoteTemplate",
+        name: "Monthly note template",
+        description: "Path to the template for new monthly notes",
+        placeholder: "Templates/Monthly",
+      },
+    ] as const;
+    fields.forEach(({ key, name, description, placeholder }) => {
+      new Setting(this.containerEl)
+        .setName(name)
+        .setDesc(description)
+        .addText((textfield) => {
+          textfield.setValue(this.plugin.options[key]);
+          textfield.setPlaceholder(placeholder);
+          textfield.onChange(async (value) => {
+            await this.plugin.writeOptions(() => ({ [key]: value }));
+          });
+        });
+    });
   }
 
   addWeekStartSetting(): void {

@@ -10,13 +10,24 @@ import { FileView, TFile, ItemView, WorkspaceLeaf } from "obsidian";
 import { get } from "svelte/store";
 
 import { TRIGGER_ON_OPEN, VIEW_TYPE_CALENDAR } from "src/constants";
+import {
+  getMonthlyNote,
+  getMonthlyDateFromFile,
+  tryToCreateMonthlyNote,
+} from "src/io/monthlyNotes";
 import { tryToCreateDailyNote } from "src/io/dailyNotes";
 import { tryToCreateWeeklyNote } from "src/io/weeklyNotes";
 import type { ISettings } from "src/settings";
 
 import Calendar from "./ui/Calendar.svelte";
 import { showFileMenu } from "./ui/fileMenu";
-import { activeFile, dailyNotes, weeklyNotes, settings } from "./ui/stores";
+import {
+  activeFile,
+  dailyNotes,
+  weeklyNotes,
+  monthlyNotes,
+  settings,
+} from "./ui/stores";
 import {
   customTagsSource,
   streakSource,
@@ -31,6 +42,7 @@ export default class CalendarView extends ItemView {
   constructor(leaf: WorkspaceLeaf) {
     super(leaf);
 
+    this.openOrCreateMonthlyNote = this.openOrCreateMonthlyNote.bind(this);
     this.openOrCreateDailyNote = this.openOrCreateDailyNote.bind(this);
     this.openOrCreateWeeklyNote = this.openOrCreateWeeklyNote.bind(this);
 
@@ -56,6 +68,10 @@ export default class CalendarView extends ItemView {
     this.registerEvent(this.app.vault.on("create", this.onFileCreated));
     this.registerEvent(this.app.vault.on("delete", this.onFileDeleted));
     this.registerEvent(this.app.vault.on("modify", this.onFileModified));
+    this.registerEvent(this.app.vault.on("rename", () => {
+      monthlyNotes.reindex();
+      this.calendar?.tick();
+    }));
     this.registerEvent(this.app.workspace.on("file-open", this.onFileOpen));
 
     this.settings = null;
@@ -103,6 +119,7 @@ export default class CalendarView extends ItemView {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       target: (this as any).contentEl,
       props: {
+        onClickMonth: this.openOrCreateMonthlyNote,
         onClickDay: this.openOrCreateDailyNote,
         onClickWeek: this.openOrCreateWeeklyNote,
         onHoverDay: this.onHoverDay,
@@ -177,12 +194,14 @@ export default class CalendarView extends ItemView {
   }
 
   private onNoteSettingsUpdate(): void {
+    monthlyNotes.reindex();
     dailyNotes.reindex();
     weeklyNotes.reindex();
     this.updateActiveFile();
   }
 
   private async onFileDeleted(file: TFile): Promise<void> {
+    monthlyNotes.reindex();
     if (getDateFromFile(file, "day")) {
       dailyNotes.reindex();
       this.updateActiveFile();
@@ -201,6 +220,7 @@ export default class CalendarView extends ItemView {
   }
 
   private onFileCreated(file: TFile): void {
+    monthlyNotes.reindex();
     if (this.app.workspace.layoutReady && this.calendar) {
       if (getDateFromFile(file, "day")) {
         dailyNotes.reindex();
@@ -238,6 +258,12 @@ export default class CalendarView extends ItemView {
     const { activeLeaf } = this.app.workspace;
 
     if (activeLeaf.view instanceof FileView) {
+      const month = getMonthlyDateFromFile(activeLeaf.view.file, this.settings);
+      if (month) {
+        this.calendar.$set({ displayedMonth: month });
+        return;
+      }
+
       // Check to see if the active note is a daily-note
       let date = getDateFromFile(activeLeaf.view.file, "day");
       if (date) {
@@ -253,6 +279,24 @@ export default class CalendarView extends ItemView {
         return;
       }
     }
+  }
+
+  async openOrCreateMonthlyNote(date: Moment, inNewSplit: boolean): Promise<void> {
+    const { workspace, vault } = this.app;
+    const note = getMonthlyNote(date, get(monthlyNotes), this.settings);
+    if (!note) {
+      await tryToCreateMonthlyNote(date, inNewSplit, this.settings, () => {
+        monthlyNotes.reindex();
+        this.calendar?.tick();
+      });
+      return;
+    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const mode = (vault as any).getConfig("defaultViewMode");
+    const leaf = inNewSplit
+      ? workspace.splitActiveLeaf()
+      : workspace.getUnpinnedLeaf();
+    await leaf.openFile(note, { active: true, mode });
   }
 
   async openOrCreateWeeklyNote(
